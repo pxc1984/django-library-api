@@ -1,4 +1,4 @@
-import datetime
+from django.utils import timezone
 
 from library.models import Book, Borrow
 from library.services.books import list_books, add_or_increase_book, BookValidator, BookValidatorMode, \
@@ -73,7 +73,7 @@ def return_book(request: HttpRequest) -> Response:
         return Response({'message': 'User didn\'t borrow specified book before'}, status=HTTP_404_NOT_FOUND)
     if borrow.returned_at:
         return Response({'message': 'User already returned specified book'}, status=HTTP_400_BAD_REQUEST)
-    borrow.returned_at = datetime.datetime.now()
+    borrow.returned_at = timezone.now()
     borrow.save()
 
     return Response({'message': 'ok'}, status=HTTP_200_OK)
