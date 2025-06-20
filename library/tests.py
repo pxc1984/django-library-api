@@ -26,9 +26,6 @@ class BaseBookTestCase(APITestCase):
             is_staff=True
         )
 
-    def specificDataSetup(self):
-        pass
-
     def setUp(self):
         self.sample_book = {
             'title': 'Test Book',
@@ -38,7 +35,6 @@ class BaseBookTestCase(APITestCase):
         }
         self.book = Book.objects.create(**self.sample_book)
         self.authenticate()
-        self.specificDataSetup()
 
     def authenticate(self):
         """
@@ -61,7 +57,7 @@ class BaseBookTestCase(APITestCase):
         return response, new_book_data
 
 
-class AdminBookAPIBookTest(BaseBookTestCase):
+class AdminBookAPITest(BaseBookTestCase):
     def setUp(self):
         self.user = self.admin_user  # Use the admin user for these tests
         super().setUp()
@@ -162,7 +158,7 @@ class AdminBookAPIBookTest(BaseBookTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
-class UserBookAPIBookTest(BaseBookTestCase):
+class UserBookAPITest(BaseBookTestCase):
     def setUp(self):
         super().setUp()
         # The default user from BaseBookTestCase will be used
@@ -187,36 +183,23 @@ class UserBookAPIBookTest(BaseBookTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
-
-class BookAPIBookTest(BaseBookTestCase):
     def test_list_books_empty(self):
         # Delete the book created in setUp
         Book.objects.all().delete()
-        
+
         url = reverse('books view')
         response = self.client.get(url)
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {'books': []})
 
     def test_list_books_with_data(self):
         url = reverse('books view')
         response = self.client.get(url)
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['books']), 1)
         self.assertIn(str(self.book), response.data['books'])
-
-
-class BorrowAPITest(UserBookAPIBookTest):
-    def specificDataSetup(self):
-        test_book = Book.objects.filter(isbn='1234567890123').first()
-        if test_book:
-            test_book.delete()
-        self.book = Book.objects.create(title='Test Book',
-                                        author='Test Author',
-                                        isbn='1234567890123',
-                                        available_copies=5)
 
     def test_borrow_book_missing_isbn(self):
         url = reverse('borrow book view')
@@ -254,17 +237,6 @@ class BorrowAPITest(UserBookAPIBookTest):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['message'], "ok")
         self.assertEqual(Borrow.objects.filter(user=self.user, book=self.book).count(), 1)
-
-
-class ReturnAPITest(UserBookAPIBookTest):
-    def specificDataSetup(self):
-        test_book = Book.objects.filter(isbn='1234567890123').first()
-        if test_book:
-            test_book.delete()
-        self.book = Book.objects.create(title='Test Book',
-                                        author='Test Author',
-                                        isbn='1234567890123',
-                                        available_copies=5)
 
     def test_return_book_successful(self):
         borrow = Borrow.objects.create(user=self.user, book=self.book)
