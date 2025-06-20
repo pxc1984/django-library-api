@@ -9,7 +9,16 @@ jobs:
     name: CRLF Check
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [3.12]
+
     steps:
     - uses: actions/checkout@v4.2.2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
     - name: Check for CRLF
-      run: tools/check_crlf.py
+      run: python tools/check_crlf.py
