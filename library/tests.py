@@ -252,3 +252,17 @@ class BorrowAPITest(UserBookAPIBookTest):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['message'], "ok")
         self.assertEqual(Borrow.objects.filter(user=self.user, book=self.book).count(), 1)
+
+
+class ReturnAPITest(UserBookAPIBookTest):
+    def specificDataSetup(self):
+        test_book = Book.objects.filter(isbn='1234567890123').first()
+        if test_book:
+            test_book.delete()
+        self.book = Book.objects.create(title='Test Book',
+                                        author='Test Author',
+                                        isbn='1234567890123',
+                                        available_copies=5)
+
+    def test_return_book_successful(self):
+        ...

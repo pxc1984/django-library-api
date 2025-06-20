@@ -1,3 +1,5 @@
+import datetime
+
 from library.models import Book, Borrow
 from library.services.books import list_books, add_or_increase_book, BookValidator, BookValidatorMode, \
     get_actual_available_copies
@@ -41,15 +43,7 @@ def handle_book_creation(request: HttpRequest) -> Response:
 
 @api_view(['POST'])
 def borrow_book(request: HttpRequest) -> Response:
-    book_data, err = BookValidator.validate_request(request, BookValidatorMode.Isbn)
-    if err:
-        return Response({'message': err}, status=HTTP_400_BAD_REQUEST)
-
-    book_query = Book.objects.filter(isbn=book_data.isbn)
-    if not book_query.exists():
-        return Response({'message': err}, status=HTTP_404_NOT_FOUND)
-
-    queried_book = book_query.first()
+    queried_book = BookValidator.get_queried_book_by_request(request)
     if get_actual_available_copies(queried_book) < 1:
         return Response({'message': f"{str(queried_book)} isn't available."}, status=HTTP_200_OK)
 
@@ -63,5 +57,17 @@ def borrow_book(request: HttpRequest) -> Response:
         user=request.user,
         book=queried_book,
     ).save()
+
+    return Response({'message': 'ok'}, status=HTTP_200_OK)
+
+
+@api_view(['POST'])
+def return_book(request: HttpRequest) -> Response:
+    queried_book = BookValidator.get_queried_book_by_request(request)
+    borrow = Borrow.objects.filter(user=request.user, book=queried_book).first()
+    if not borrow:
+        return Response({'message': f'User didn\'t borrow specified book before'}, status=HTTP_404_NOT_FOUND)
+    borrow.returned_at = datetime.datetime.now()
+    borrow.save()
 
     return Response({'message': 'ok'}, status=HTTP_200_OK)

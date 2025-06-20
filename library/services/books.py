@@ -3,6 +3,8 @@ from enum import Enum
 from typing import Optional
 
 from django.http import HttpRequest
+from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
 from library.models import Book, Borrow
 
@@ -95,3 +97,14 @@ class BookValidator:
             isbn=isbn,
             available_copies=available_copies
         ), None
+
+    @staticmethod
+    def get_queried_book_by_request(request: HttpRequest):
+        book_data, err = BookValidator.validate_request(request, BookValidatorMode.Isbn)
+        if err:
+            return Response({'message': err}, status=HTTP_400_BAD_REQUEST)
+
+        book_query = Book.objects.filter(isbn=book_data.isbn)
+        if not book_query.exists():
+            return Response({'message': err}, status=HTTP_404_NOT_FOUND)
+        return book_query.first()
