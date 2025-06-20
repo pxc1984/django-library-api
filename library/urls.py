@@ -4,7 +4,7 @@ from library.views import books_view, borrow_book, return_book
 
 urlpatterns = [
     path('books/', books_view, name='books view'),
-    path('borrow/', borrow_book, name='borrow view'),
-    path('return/', return_book, name='return book'),
+    path('borrow/', borrow_book, name='borrow book view'),
+    path('return/', return_book, name='return book view'),
     # path('borrows/', ),
 ]

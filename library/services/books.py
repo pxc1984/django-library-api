@@ -99,12 +99,12 @@ class BookValidator:
         ), None
 
     @staticmethod
-    def get_queried_book_by_request(request: HttpRequest):
+    def get_queried_book_by_request(request: HttpRequest) -> tuple[Book, None] | tuple[None, Response]:
         book_data, err = BookValidator.validate_request(request, BookValidatorMode.Isbn)
         if err:
-            return Response({'message': err}, status=HTTP_400_BAD_REQUEST)
+            return None, Response({'message': err}, status=HTTP_400_BAD_REQUEST)
 
         book_query = Book.objects.filter(isbn=book_data.isbn)
         if not book_query.exists():
-            return Response({'message': err}, status=HTTP_404_NOT_FOUND)
-        return book_query.first()
+            return None, Response({'message': err}, status=HTTP_404_NOT_FOUND)
+        return book_query.first(), None

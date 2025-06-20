@@ -43,7 +43,9 @@ def handle_book_creation(request: HttpRequest) -> Response:
 
 @api_view(['POST'])
 def borrow_book(request: HttpRequest) -> Response:
-    queried_book = BookValidator.get_queried_book_by_request(request)
+    queried_book, err_response = BookValidator.get_queried_book_by_request(request)
+    if err_response:
+        return err_response
     if get_actual_available_copies(queried_book) < 1:
         return Response({'message': f"{str(queried_book)} isn't available."}, status=HTTP_200_OK)
 
@@ -63,10 +65,14 @@ def borrow_book(request: HttpRequest) -> Response:
 
 @api_view(['POST'])
 def return_book(request: HttpRequest) -> Response:
-    queried_book = BookValidator.get_queried_book_by_request(request)
+    queried_book, err_response = BookValidator.get_queried_book_by_request(request)
+    if err_response:
+        return err_response
     borrow = Borrow.objects.filter(user=request.user, book=queried_book).first()
     if not borrow:
-        return Response({'message': f'User didn\'t borrow specified book before'}, status=HTTP_404_NOT_FOUND)
+        return Response({'message': 'User didn\'t borrow specified book before'}, status=HTTP_404_NOT_FOUND)
+    if borrow.returned_at:
+        return Response({'message': 'User already returned specified book'}, status=HTTP_400_BAD_REQUEST)
     borrow.returned_at = datetime.datetime.now()
     borrow.save()
 

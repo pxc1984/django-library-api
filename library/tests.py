@@ -1,3 +1,5 @@
+import datetime
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
@@ -217,7 +219,7 @@ class BorrowAPITest(UserBookAPIBookTest):
                                         available_copies=5)
 
     def test_borrow_book_missing_isbn(self):
-        url = reverse('borrow view')
+        url = reverse('borrow book view')
         input_data = {
 
         }
@@ -226,12 +228,12 @@ class BorrowAPITest(UserBookAPIBookTest):
         self.assertEqual(response.data['message'], "Please provide book isbn")
 
     def test_borrow_book_book_not_found(self):
-        url = reverse('borrow view')
+        url = reverse('borrow book view')
         response = self.client.post(url, {'isbn': '9999999999999'})
         self.assertEqual(response.status_code, 404)
 
     def test_borrow_book_no_available_copies(self):
-        url = reverse('borrow view')
+        url = reverse('borrow book view')
         self.book.available_copies = 0
         self.book.save()
         response = self.client.post(url, {'isbn': self.book.isbn})
@@ -239,7 +241,7 @@ class BorrowAPITest(UserBookAPIBookTest):
         self.assertEqual(response.data['message'], "Test Book by Test Author. ISBN: 1234567890123. isn't available.")
 
     def test_borrow_book_already_borrowed(self):
-        url = reverse('borrow view')
+        url = reverse('borrow book view')
         borrow = Borrow.objects.create(user=self.user, book=self.book)
         response = self.client.post(url, {'isbn': self.book.isbn})
         self.assertEqual(response.status_code, 200)
@@ -247,7 +249,7 @@ class BorrowAPITest(UserBookAPIBookTest):
                          f"User has already borrowed Test Book by Test Author. ISBN: 1234567890123. and cannot borrow twice: {str(borrow)}")
 
     def test_borrow_book_successful(self):
-        url = reverse('borrow view')
+        url = reverse('borrow book view')
         response = self.client.post(url, {'isbn': self.book.isbn})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['message'], "ok")
@@ -267,7 +269,7 @@ class ReturnAPITest(UserBookAPIBookTest):
     def test_return_book_successful(self):
         borrow = Borrow.objects.create(user=self.user, book=self.book)
 
-        url = reverse('return book')
+        url = reverse('return book view')
         response = self.client.post(url, {'isbn': self.book.isbn})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -275,3 +277,36 @@ class ReturnAPITest(UserBookAPIBookTest):
 
         borrow.refresh_from_db()
         self.assertIsNotNone(borrow.returned_at)
+
+    def test_return_book_missing_isbn(self):
+        url = reverse('return book view')
+        response = self.client.post(url, {})
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_return_book_not_found(self):
+        url = reverse('return book view')
+        response = self.client.post(url, {'isbn': '9999999999999'})
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_return_book_not_borrowed(self):
+        url = reverse('return book view')
+        response = self.client.post(url, {'isbn': self.book.isbn})
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.data['message'], "User didn't borrow specified book before")
+
+    def test_return_book_already_returned(self):
+        # Create a borrow that's already returned
+        borrow = Borrow.objects.create(
+            user=self.user,
+            book=self.book,
+            returned_at=datetime.datetime.now()
+        )
+
+        url = reverse('return book view')
+        response = self.client.post(url, {'isbn': self.book.isbn})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['message'], 'User already returned specified book')
