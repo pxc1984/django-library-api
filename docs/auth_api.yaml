@@ -1,0 +1,93 @@
+﻿openapi: 3.1.0
+info:
+  title: Library API
+  description: API for library management system
+  version: 1.0.0
+
+paths:
+  /auth_api/register/:
+    post:
+      summary: Register a new user
+      description: Register a new user and return a JWT pair
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/definitions/Account'
+      responses:
+        '201':
+          description: User successfully created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  refresh:
+                    type: string
+                    description: JWT refresh token
+                  access:
+                    type: string
+                    description: JWT access token
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                    example: "Provide username."
+
+  /auth_api/ping/:
+    get:
+      summary: Ping endpoint
+      description: Web service to verify Token-based authorization is working correctly
+      operationId: pingService
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "pong"
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+    TokenPair:
+      type: object
+      properties:
+        refresh:
+          type: string
+          description: JWT refresh token
+        access:
+          type: string
+          description: JWT access token
+definitions:
+  Account:
+    type: object
+    required:
+      - username
+      - password
+    properties:
+      username:
+        type: string
+        description: Username for the new account
+      password:
+        type: string
+        description: Password for the new account
+        minLength: 6
