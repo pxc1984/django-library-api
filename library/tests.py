@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APITestCase
@@ -8,6 +9,20 @@ from library.models import Book
 
 class BaseTestCase(APITestCase):
     def setUp(self):
+        # Create normal user
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='testpass123',
+        )
+
+        # Create admin user
+        self.admin_user = User.objects.create_user(
+            username='admin',
+            password='admin123',
+            email='admin@example.com',
+            is_staff=True
+        )
+
         self.sample_book = {
             'title': 'Test Book',
             'author': 'Test Author',
@@ -15,6 +30,20 @@ class BaseTestCase(APITestCase):
             'available_copies': 5
         }
         self.book = Book.objects.create(**self.sample_book)
+
+    def authenticate_user(self):
+        """
+        Helper function that authenticates as a normal user.
+        :return:
+        """
+        self.client.force_authenticate(user=self.user)
+
+    def authenticate_admin(self):
+        """
+        Helper function that authenticates as an admin user.
+        :return:
+        """
+        self.client.force_authenticate(user=self.admin_user)
 
 
 class BookAPITest(BaseTestCase):
@@ -37,7 +66,23 @@ class BookAPITest(BaseTestCase):
         self.assertIn(str(self.book), response.data['books'])
 
     def test_add_new_book_success(self):
+        self.authenticate_admin()
+        response, new_book_data = self._add_new_book()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {'message': 'ok'})
+        self.assertTrue(Book.objects.filter(isbn=new_book_data['isbn']).exists())
+
+    def test_add_new_book_wrong_permissions(self):
+        self.authenticate_user()
+        response, new_book_data = self._add_new_book()
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(Book.objects.filter(isbn=new_book_data['isbn']).exists())
+
+    def _add_new_book(self):
         url = reverse('books view')
+
         new_book_data = {
             'title': 'New Book',
             'author': 'New Author',
@@ -46,13 +91,12 @@ class BookAPITest(BaseTestCase):
         }
         
         response = self.client.post(url, new_book_data)
-        
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data, {'message': 'ok'})
-        self.assertTrue(Book.objects.filter(isbn=new_book_data['isbn']).exists())
+        return response, new_book_data
 
     def test_add_existing_book_increases_copies(self):
+        self.authenticate_admin()
         url = reverse('books view')
+
         additional_copies = {
             'title': self.sample_book['title'],
             'author': self.sample_book['author'],
@@ -68,7 +112,9 @@ class BookAPITest(BaseTestCase):
         self.assertEqual(self.book.available_copies, initial_copies + additional_copies['available_copies'])
 
     def test_add_book_missing_title(self):
+        self.authenticate_admin()
         url = reverse('books view')
+
         invalid_book = {
             'author': 'Test Author',
             'isbn': '1234567890123',
@@ -81,7 +127,9 @@ class BookAPITest(BaseTestCase):
         self.assertEqual(response.data, {'message': 'Please provide book title'})
 
     def test_add_book_missing_author(self):
+        self.authenticate_admin()
         url = reverse('books view')
+
         invalid_book = {
             'title': 'Test Book',
             'isbn': '1234567890123',
@@ -94,7 +142,9 @@ class BookAPITest(BaseTestCase):
         self.assertEqual(response.data, {'message': 'Please provide book author'})
 
     def test_add_book_missing_isbn(self):
+        self.authenticate_admin()
         url = reverse('books view')
+
         invalid_book = {
             'title': 'Test Book',
             'author': 'Test Author',
@@ -107,7 +157,9 @@ class BookAPITest(BaseTestCase):
         self.assertEqual(response.data, {'message': 'Please provide book isbn'})
 
     def test_add_book_invalid_copies(self):
+        self.authenticate_admin()
         url = reverse('books view')
+
         invalid_book = {
             'title': 'Test Book',
             'author': 'Test Author',
@@ -121,7 +173,9 @@ class BookAPITest(BaseTestCase):
         self.assertIn('message', response.data)
 
     def test_add_book_zero_copies(self):
+        self.authenticate_admin()
         url = reverse('books view')
+
         invalid_book = {
             'title': 'Test Book',
             'author': 'Test Author',

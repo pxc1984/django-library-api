@@ -58,6 +58,8 @@ def books_view(request: HttpRequest) -> Response:
     if request.method == 'GET':
         return create_books_list_response()
     elif request.method == 'POST':
+        if not request.user.is_staff:
+            return Response({'message': 'Admin privileges required'}, status=HTTP_403_FORBIDDEN)
         return handle_book_creation(request)
     return Response(status=HTTP_403_FORBIDDEN)
 
@@ -67,11 +69,10 @@ def create_books_list_response() -> Response:
 
 
 def handle_book_creation(request: HttpRequest) -> Response:
-    # TODO: add checking for admin permissions
-    book_data, error = BookValidator.validate_request(request)
+    book_data, err = BookValidator.validate_request(request)
 
-    if error:
-        return Response({'message': error}, status=HTTP_400_BAD_REQUEST)
+    if err:
+        return Response({'message': err}, status=HTTP_400_BAD_REQUEST)
 
     book_info = {
         'title': book_data.title,
