@@ -4,7 +4,7 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 
-from library.models import Book
+from library.models import Book, Borrow
 
 
 class BaseBookTestCase(APITestCase):
@@ -24,6 +24,9 @@ class BaseBookTestCase(APITestCase):
             is_staff=True
         )
 
+    def specificDataSetup(self):
+        pass
+
     def setUp(self):
         self.sample_book = {
             'title': 'Test Book',
@@ -33,14 +36,13 @@ class BaseBookTestCase(APITestCase):
         }
         self.book = Book.objects.create(**self.sample_book)
         self.authenticate()
+        self.specificDataSetup()
 
     def authenticate(self):
         """
         Helper function that authenticates as a self.user.
         :return:
         """
-        if not hasattr(self, 'user'):
-            return
         self.client.force_authenticate(user=self.user)
 
     def _add_new_book(self):
@@ -202,3 +204,51 @@ class BookAPIBookTest(BaseBookTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['books']), 1)
         self.assertIn(str(self.book), response.data['books'])
+
+
+class BorrowAPITest(UserBookAPIBookTest):
+    def specificDataSetup(self):
+        test_book = Book.objects.filter(isbn='1234567890123').first()
+        if test_book:
+            test_book.delete()
+        self.book = Book.objects.create(title='Test Book',
+                                        author='Test Author',
+                                        isbn='1234567890123',
+                                        available_copies=5)
+
+    def test_borrow_book_missing_isbn(self):
+        url = reverse('borrow view')
+        input_data = {
+
+        }
+        response = self.client.post(url, input_data)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['message'], "Please provide book isbn")
+
+    def test_borrow_book_book_not_found(self):
+        url = reverse('borrow view')
+        response = self.client.post(url, {'isbn': '9999999999999'})
+        self.assertEqual(response.status_code, 404)
+
+    def test_borrow_book_no_available_copies(self):
+        url = reverse('borrow view')
+        self.book.available_copies = 0
+        self.book.save()
+        response = self.client.post(url, {'isbn': self.book.isbn})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['message'], "Test Book by Test Author. ISBN: 1234567890123. isn't available.")
+
+    def test_borrow_book_already_borrowed(self):
+        url = reverse('borrow view')
+        borrow = Borrow.objects.create(user=self.user, book=self.book)
+        response = self.client.post(url, {'isbn': self.book.isbn})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['message'],
+                         f"User has already borrowed Test Book by Test Author. ISBN: 1234567890123. and cannot borrow twice: {str(borrow)}")
+
+    def test_borrow_book_successful(self):
+        url = reverse('borrow view')
+        response = self.client.post(url, {'isbn': self.book.isbn})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['message'], "ok")
+        self.assertEqual(Borrow.objects.filter(user=self.user, book=self.book).count(), 1)

@@ -1,9 +1,12 @@
-from library.services.books import list_books, add_or_increase_book, BookValidator
+from library.models import Book, Borrow
+from library.services.books import list_books, add_or_increase_book, BookValidator, BookValidatorMode, \
+    get_actual_available_copies
 
 from django.http import HttpRequest
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, HTTP_405_METHOD_NOT_ALLOWED
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, HTTP_405_METHOD_NOT_ALLOWED, \
+    HTTP_500_INTERNAL_SERVER_ERROR, HTTP_404_NOT_FOUND
 
 
 @api_view(['GET', 'POST'])
@@ -38,4 +41,27 @@ def handle_book_creation(request: HttpRequest) -> Response:
 
 @api_view(['POST'])
 def borrow_book(request: HttpRequest) -> Response:
-    ...
+    book_data, err = BookValidator.validate_request(request, BookValidatorMode.Isbn)
+    if err:
+        return Response({'message': err}, status=HTTP_400_BAD_REQUEST)
+
+    book_query = Book.objects.filter(isbn=book_data.isbn)
+    if not book_query.exists():
+        return Response({'message': err}, status=HTTP_404_NOT_FOUND)
+
+    queried_book = book_query.first()
+    if get_actual_available_copies(queried_book) < 1:
+        return Response({'message': f"{str(queried_book)} isn't available."}, status=HTTP_200_OK)
+
+    borrow = Borrow.objects.filter(user=request.user, book=queried_book).first()
+    if borrow:
+        return Response(
+            {'message': f"User has already borrowed {str(queried_book)} and cannot borrow twice: {str(borrow)}"},
+            status=HTTP_200_OK)
+
+    Borrow.objects.create(
+        user=request.user,
+        book=queried_book,
+    ).save()
+
+    return Response({'message': 'ok'}, status=HTTP_200_OK)

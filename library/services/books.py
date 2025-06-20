@@ -4,7 +4,7 @@ from typing import Optional
 
 from django.http import HttpRequest
 
-from library.models import Book
+from library.models import Book, Borrow
 
 
 def list_books() -> list[str]:
@@ -20,6 +20,13 @@ def add_or_increase_book(book_info: dict[str, str | int]):
         obj = query.first()
         obj.available_copies += book_info['available_copies']
     obj.save()
+
+
+def get_actual_available_copies(book: Book) -> int:
+    _count = book.available_copies
+    borrow_query = Borrow.objects.filter(book=book, returned_at__isnull=True)
+    _count -= len(borrow_query)
+    return _count
 
 
 @dataclass
