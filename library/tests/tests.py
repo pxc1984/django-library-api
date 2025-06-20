@@ -7,61 +7,10 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 
 from library.models import Book, Borrow
+from library.tests.base import AdminBookAPITest, UserBookAPITest, BookAPITest
 
 
-class BaseBookTestCase(APITestCase):
-    @classmethod
-    def setUpTestData(cls):
-        # Create normal user
-        cls.user = User.objects.create_user(
-            username='testuser',
-            password='testpass123',
-        )
-
-        # Create admin user
-        cls.admin_user = User.objects.create_user(
-            username='admin',
-            password='admin123',
-            email='admin@example.com',
-            is_staff=True
-        )
-
-    def setUp(self):
-        self.sample_book = {
-            'title': 'Test Book',
-            'author': 'Test Author',
-            'isbn': '1234567890123',
-            'available_copies': 5
-        }
-        self.book = Book.objects.create(**self.sample_book)
-        self.authenticate()
-
-    def authenticate(self):
-        """
-        Helper function that authenticates as a self.user.
-        :return:
-        """
-        self.client.force_authenticate(user=self.user)
-
-    def _add_new_book(self):
-        url = reverse('books view')
-
-        new_book_data = {
-            'title': 'New Book',
-            'author': 'New Author',
-            'isbn': '9876543210123',
-            'available_copies': 3
-        }
-
-        response = self.client.post(url, new_book_data)
-        return response, new_book_data
-
-
-class AdminBookAPITest(BaseBookTestCase):
-    def setUp(self):
-        self.user = self.admin_user  # Use the admin user for these tests
-        super().setUp()
-
+class BookAdditionTestSet(AdminBookAPITest):
     def test_add_new_book_success(self):
         response, new_book_data = self._add_new_book()
 
@@ -158,17 +107,15 @@ class AdminBookAPITest(BaseBookTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
-class UserBookAPITest(BaseBookTestCase):
-    def setUp(self):
-        super().setUp()
-        # The default user from BaseBookTestCase will be used
-
+class UserBookAdditionTest(UserBookAPITest):
     def test_add_new_book_wrong_permissions(self):
         response, new_book_data = self._add_new_book()
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(Book.objects.filter(isbn=new_book_data['isbn']).exists())
 
+
+class BooksViewTestSet(UserBookAPITest):
     def test_forbidden_method(self):
         url = reverse('books view')
 
@@ -201,6 +148,8 @@ class UserBookAPITest(BaseBookTestCase):
         self.assertEqual(len(response.data['books']), 1)
         self.assertIn(str(self.book), response.data['books'])
 
+
+class BorrowBookViewTestSet(UserBookAPITest):
     def test_borrow_book_missing_isbn(self):
         url = reverse('borrow book view')
         input_data = {
@@ -238,6 +187,8 @@ class UserBookAPITest(BaseBookTestCase):
         self.assertEqual(response.data['message'], "ok")
         self.assertEqual(Borrow.objects.filter(user=self.user, book=self.book).count(), 1)
 
+
+class ReturnBookViewTestSet(UserBookAPITest):
     def test_return_book_successful(self):
         borrow = Borrow.objects.create(user=self.user, book=self.book)
 
@@ -282,3 +233,59 @@ class UserBookAPITest(BaseBookTestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data['message'], 'User already returned specified book')
+
+
+class ListBorrowsUserBookAPITest(BookAPITest):
+    def setUp(self):
+        self.user = self.admin_user
+        super().setUp()
+
+        # Create a test book
+        self.book = Book.objects.create(
+            title='Test Book',
+            author='Test Author',
+            isbn='1234567890',
+            available_copies=1
+        )
+
+        # Create test borrow
+        self.active_borrow = Borrow.objects.create(
+            user=self.user,
+            book=self.book
+        )
+
+        # Create returned borrow
+        self.returned_borrow = Borrow.objects.create(
+            user=self.user,
+            book=self.book,
+            returned_at='2025-06-20 12:00:00'
+        )
+
+    def test_list_borrows_unauthorized(self):
+        """Test that unauthorized users cannot access the endpoint"""
+        self.unauthenticate()
+        response = self.client.get(reverse('list borrows view'))
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json(), {'message': 'Admin privileges required'})
+
+    def test_list_borrows_regular_user(self):
+        """Test that regular users cannot access the endpoint"""
+        self.authenticateAs(self.normal_user)
+        response = self.client.get(reverse('list borrows view'))
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json(), {'message': 'Admin privileges required'})
+
+    def test_list_borrows_admin(self):
+        """Test that admin users can see active borrows"""
+        self.authenticateAs(self.admin_user)
+        response = self.client.get(reverse('list borrows view'))
+        self.assertEqual(response.status_code, 200)
+
+        # Should only include active (non-returned) borrows
+        self.assertEqual(len(response.json()['list']), 1)
+
+        # Verify the response contains the active borrow
+        self.assertIn(str(self.active_borrow), response.json()['list'])
+
+        # Verify the returned borrow is not included
+        self.assertNotIn(str(self.returned_borrow), response.json()['list'])
