@@ -8,27 +8,20 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 
 from library.models import Book
+from library.services.books import list_books, add_or_increase_book
 
 
 @api_view(['GET', 'POST'])
 def books_view(request):
     if request.method == 'GET':
-        return _list_books_view(request)
+        return Response({'books': list_books()}, status=HTTP_200_OK)
     elif request.method == 'POST':
-        return _add_new_book_view(request)
+        return _add_or_increase_book_view(request)
     else:
-        return Response({'message': 'forbidden'}, status=HTTP_403_FORBIDDEN)
+        return Response(status=HTTP_403_FORBIDDEN)
 
 
-def _list_books_view(request):
-    book_queryset = Book.objects.all()
-    resp = {'books': []}
-    for book in book_queryset:
-        resp['books'].append(str(book))
-    return Response(resp, status=HTTP_200_OK)
-
-
-def _add_new_book_view(request):
+def _add_or_increase_book_view(request):
     # TODO: add checking for admin permissions
 
     book_info: dict[str, str | int]
@@ -37,13 +30,7 @@ def _add_new_book_view(request):
     if err_text is not None:
         return Response({'message': err_text}, status=HTTP_400_BAD_REQUEST)
 
-    query = Book.objects.filter(isbn=book_info['isbn'])
-    if not query.exists():
-        obj = Book.objects.create(**book_info)
-    else:
-        obj = query.first()
-        obj.available_copies += book_info['available_copies']
-    obj.save()
+    add_or_increase_book(book_info)
 
     return Response({'message': 'ok'}, status=HTTP_200_OK)
 
