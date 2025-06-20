@@ -77,3 +77,11 @@ def return_book(request: HttpRequest) -> Response:
     borrow.save()
 
     return Response({'message': 'ok'}, status=HTTP_200_OK)
+
+
+@api_view(['GET'])
+def list_borrows(request: HttpRequest) -> Response:
+    if not request.user.is_staff:
+        return Response({'message': 'Admin privileges required'}, status=HTTP_403_FORBIDDEN)
+    return Response({'list': [str(borrow) for borrow in Borrow.objects.filter(returned_at__isnull=True)]},
+                    status=HTTP_200_OK)

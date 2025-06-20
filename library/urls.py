@@ -6,5 +6,5 @@ urlpatterns = [
     path('books/', books_view, name='books view'),
     path('borrow/', borrow_book, name='borrow book view'),
     path('return/', return_book, name='return book view'),
-    # path('borrows/', ),
+    path('borrows/', borrow_book, name='list borrows view'),
 ]
