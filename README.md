@@ -1,4 +1,4 @@
-# API for an abstract library
+# API for a library
 
 This is a test exercise for me to learn Django for creating 'state-of-the-art' (sarcasm) API.
 
