@@ -188,5 +188,21 @@ class BookAPITest(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, {'message': 'Please provide available copies'})
 
+    def test_forbidden_method(self):
+        self.authenticate_user()
+        url = reverse('books view')
+
+        new_book_data = {
+            'title': 'New Book',
+            'author': 'New Author',
+            'isbn': '9876543210123',
+            'available_copies': 3
+        }
+
+        response = self.client.put(url, new_book_data)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
 class BorrowAPITest(BaseTestCase):
     ...

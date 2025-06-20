@@ -38,6 +38,27 @@ class RegisterAPITest(BaseTestCase):
         response = self.client.post(url, invalid_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_invalid_username_registration(self):
+        url = reverse('register')
+        invalid_data = {
+            'password': 'passwd',
+        }
+        response = self.client.post(url, invalid_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_user_already_exists(self):
+        url = reverse('register')
+        user_data = {
+            "username": "createduser",
+            "password": "passwd123",
+            "email": "createduser@example.com",
+        }
+        User.objects.create_user(**user_data).save()
+
+        response = self.client.post(url, user_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['error'], 'User already exists.')
+
 
 
 class PingAPITest(BaseTestCase):

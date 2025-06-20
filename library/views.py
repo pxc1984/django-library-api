@@ -5,7 +5,7 @@ from typing import Optional
 from django.http import HttpRequest
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, HTTP_405_METHOD_NOT_ALLOWED
 
 
 @dataclass
@@ -57,11 +57,10 @@ class BookValidator:
 def books_view(request: HttpRequest) -> Response:
     if request.method == 'GET':
         return create_books_list_response()
-    elif request.method == 'POST':
+    else: # elif request.method == 'POST':
         if not request.user.is_staff:
             return Response({'message': 'Admin privileges required'}, status=HTTP_403_FORBIDDEN)
         return handle_book_creation(request)
-    return Response(status=HTTP_403_FORBIDDEN)
 
 
 def create_books_list_response() -> Response:
