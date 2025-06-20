@@ -265,4 +265,13 @@ class ReturnAPITest(UserBookAPIBookTest):
                                         available_copies=5)
 
     def test_return_book_successful(self):
-        ...
+        borrow = Borrow.objects.create(user=self.user, book=self.book)
+
+        url = reverse('return book')
+        response = self.client.post(url, {'isbn': self.book.isbn})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['message'], 'ok')
+
+        borrow.refresh_from_db()
+        self.assertIsNotNone(borrow.returned_at)
