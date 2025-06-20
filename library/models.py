@@ -8,6 +8,9 @@ class Book(models.Model):
     isbn = models.CharField(max_length= 13, unique=True, primary_key=True)
     available_copies = models.IntegerField()
 
+    def __str__(self):
+        return f"{self.title} by {self.author}. ISBN: {self.isbn}"
+
     class Meta:
         db_table = 'books'
         verbose_name = 'Book'
@@ -18,6 +21,9 @@ class Borrow(models.Model):
     book = models.ForeignKey(Book, models.CASCADE)
     borrowed_at = models.DateTimeField(auto_now_add=True)
     returned_at = models.DateTimeField(null=True)
+
+    def __str__(self):
+        return f"{self.user} borrowed {self.book} at {self.borrowed_at} and returned at {self.returned_at}"
 
     class Meta:
         db_table = 'borrows'
