@@ -9,7 +9,7 @@ class Book(models.Model):
     available_copies = models.IntegerField()
 
     def __str__(self):
-        return f"{self.title} by {self.author}. ISBN: {self.isbn}"
+        return f"{self.title} by {self.author}. ISBN: {self.isbn}."
 
     class Meta:
         db_table = 'books'
