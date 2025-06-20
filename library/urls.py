@@ -1,10 +1,9 @@
 from django.urls import path
 
-from library.views import list_books, add_new_book
+from library.views import books_view
 
 urlpatterns = [
-    path('books/', list_books, name='list all books'),
-    path('books/', add_new_book, name='add new book'),
+    path('books/', books_view, name='books view'),
     # path('borrow/', ),
     # path('return/', ),
     # path('borrows/', ),

@@ -22,14 +22,14 @@ class BookAPITest(BaseTestCase):
         # Delete the book created in setUp
         Book.objects.all().delete()
         
-        url = reverse('list all books')
+        url = reverse('books view')
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {'books': []})
 
     def test_list_books_with_data(self):
-        url = reverse('list all books')
+        url = reverse('books view')
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -37,7 +37,7 @@ class BookAPITest(BaseTestCase):
         self.assertIn(str(self.book), response.data['books'])
 
     def test_add_new_book_success(self):
-        url = reverse('add new book')
+        url = reverse('books view')
         new_book_data = {
             'title': 'New Book',
             'author': 'New Author',
@@ -52,7 +52,7 @@ class BookAPITest(BaseTestCase):
         self.assertTrue(Book.objects.filter(isbn=new_book_data['isbn']).exists())
 
     def test_add_existing_book_increases_copies(self):
-        url = reverse('add new book')
+        url = reverse('books view')
         additional_copies = {
             'title': self.sample_book['title'],
             'author': self.sample_book['author'],
@@ -68,7 +68,7 @@ class BookAPITest(BaseTestCase):
         self.assertEqual(self.book.available_copies, initial_copies + additional_copies['available_copies'])
 
     def test_add_book_missing_title(self):
-        url = reverse('add new book')
+        url = reverse('books view')
         invalid_book = {
             'author': 'Test Author',
             'isbn': '1234567890123',
@@ -81,7 +81,7 @@ class BookAPITest(BaseTestCase):
         self.assertEqual(response.data, {'message': 'Please provide book title'})
 
     def test_add_book_missing_author(self):
-        url = reverse('add new book')
+        url = reverse('books view')
         invalid_book = {
             'title': 'Test Book',
             'isbn': '1234567890123',
@@ -94,7 +94,7 @@ class BookAPITest(BaseTestCase):
         self.assertEqual(response.data, {'message': 'Please provide book author'})
 
     def test_add_book_missing_isbn(self):
-        url = reverse('add new book')
+        url = reverse('books view')
         invalid_book = {
             'title': 'Test Book',
             'author': 'Test Author',
@@ -107,7 +107,7 @@ class BookAPITest(BaseTestCase):
         self.assertEqual(response.data, {'message': 'Please provide book isbn'})
 
     def test_add_book_invalid_copies(self):
-        url = reverse('add new book')
+        url = reverse('books view')
         invalid_book = {
             'title': 'Test Book',
             'author': 'Test Author',
@@ -121,7 +121,7 @@ class BookAPITest(BaseTestCase):
         self.assertIn('message', response.data)
 
     def test_add_book_zero_copies(self):
-        url = reverse('add new book')
+        url = reverse('books view')
         invalid_book = {
             'title': 'Test Book',
             'author': 'Test Author',

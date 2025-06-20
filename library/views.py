@@ -5,13 +5,22 @@ from django.http import HttpRequest
 from jwt import ExpiredSignatureError
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN
 
 from library.models import Book
 
 
-@api_view(['GET'])
-def list_books(request):
+@api_view(['GET', 'POST'])
+def books_view(request):
+    if request.method == 'GET':
+        return _list_books_view(request)
+    elif request.method == 'POST':
+        return _add_new_book_view(request)
+    else:
+        return Response({'message': 'forbidden'}, status=HTTP_403_FORBIDDEN)
+
+
+def _list_books_view(request):
     book_queryset = Book.objects.all()
     resp = {'books': []}
     for book in book_queryset:
@@ -19,8 +28,7 @@ def list_books(request):
     return Response(resp, status=HTTP_200_OK)
 
 
-@api_view(['POST'])
-def add_new_book(request):
+def _add_new_book_view(request):
     # TODO: add checking for admin permissions
 
     book_info: dict[str, str | int]
@@ -41,20 +49,20 @@ def add_new_book(request):
 
 
 def _parse_book(request: WSGIRequest) -> tuple[dict[str, str | int], None] | tuple[None, str]:
-    title = request.POST['title']
+    title = request.POST.get('title')
     if not title:
         return None, "Please provide book title"
 
-    author = request.POST['author']
+    author = request.POST.get('author')
     if not author:
         return None, "Please provide book author"
 
-    isbn = request.POST['isbn']
+    isbn = request.POST.get('isbn')
     if not isbn:
         return None, "Please provide book isbn"
 
     try:
-        available_copies = int(request.POST['available_copies'])
+        available_copies = int(request.POST.get('available_copies'))
         if not available_copies:
             return None, "Please provide available copies"
     except ValueError as e:
